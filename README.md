@@ -4,9 +4,11 @@ A minimal macOS menu bar app for monitoring and toggling Homebrew services. Insp
 
 ![macOS](https://img.shields.io/badge/macOS-26.0%2B-black)
 
+![Preview](preview.gif)
+
 ## Features
 
-- **Menu bar icon** with a badge showing the number of running services
+- **Menu bar icon** that fills up when services are running
 - **Popover service list** — click the icon to see all Homebrew services
 - **Green toggle switches** to start/stop services (`brew services start/stop`)
 - **Auto-refresh** every 30 seconds to keep the badge count current
