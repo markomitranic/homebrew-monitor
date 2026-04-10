@@ -1,18 +1,19 @@
 import AppKit
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private let serviceManager = BrewServiceManager()
     private let listController = ServiceListViewController()
     private var services: [BrewServiceInfo] = []
     private var refreshTimer: Timer?
+    private var clickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.image = drawStatusIcon(runningCount: 0)
+            button.image = drawStatusIcon(active: false)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.action = #selector(statusItemClicked(_:))
             button.target = self
@@ -20,6 +21,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover.contentViewController = listController
         popover.behavior = .transient
+        popover.delegate = self
+
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self, self.popover.isShown else { return }
+            self.popover.performClose(nil)
+        }
 
         listController.onToggleService = { [weak self] name, shouldStart in
             self?.toggleService(name, shouldStart: shouldStart)
@@ -57,10 +67,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             refreshServices()
             guard let button = statusItem.button else { return }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            NSApp.activate(ignoringOtherApps: true)
+
+            clickMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown]
+            ) { [weak self] _ in
+                self?.popover.performClose(nil)
+            }
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        if let monitor = clickMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickMonitor = nil
         }
     }
 
     private func showContextMenu() {
+        if popover.isShown { popover.performClose(nil) }
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Refresh", action: #selector(refreshClicked), keyEquivalent: "r"))
         menu.addItem(.separator())
@@ -92,8 +117,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             case .success(let fetchedServices):
                 self.services = fetchedServices
                 self.listController.updateServices(fetchedServices)
-                let runningCount = fetchedServices.filter { $0.running }.count
-                self.statusItem.button?.image = drawStatusIcon(runningCount: runningCount)
+                let hasRunning = fetchedServices.contains { $0.running }
+                self.statusItem.button?.image = drawStatusIcon(active: hasRunning)
             case .failure(let error):
                 self.listController.showError(error.localizedDescription)
             }

@@ -1,84 +1,49 @@
 import AppKit
 
-func drawStatusIcon(runningCount: Int) -> NSImage {
+func drawStatusIcon(active: Bool) -> NSImage {
     let w: CGFloat = 22
     let h: CGFloat = 22
     let image = NSImage(size: NSSize(width: w, height: h), flipped: false) { rect in
-
-        // Database cylinder stack icon
-        let cylWidth: CGFloat = 12
-        let cylX: CGFloat = (w - cylWidth) / 2
-        let ellipseHeight: CGFloat = 4
-        let segmentHeight: CGFloat = 5
-
-        // Three segments stacked vertically, centered
-        let bottomY: CGFloat = 4.0
-        let midY: CGFloat = bottomY + segmentHeight
-        let topY: CGFloat = midY + segmentHeight
-
         NSColor.black.setStroke()
-        let lineWidth: CGFloat = 1.3
-
-        // Draw the three ellipse tops
-        for y in [bottomY, midY, topY] {
-            let ellipse = NSBezierPath(ovalIn: NSRect(
-                x: cylX, y: y - ellipseHeight / 2,
-                width: cylWidth, height: ellipseHeight
-            ))
-            ellipse.lineWidth = lineWidth
-            ellipse.stroke()
-        }
-
-        // Draw vertical sides connecting bottom to top
-        let sidePath = NSBezierPath()
-        sidePath.lineWidth = lineWidth
-        // Left side
-        sidePath.move(to: NSPoint(x: cylX, y: bottomY))
-        sidePath.line(to: NSPoint(x: cylX, y: topY))
-        // Right side
-        sidePath.move(to: NSPoint(x: cylX + cylWidth, y: bottomY))
-        sidePath.line(to: NSPoint(x: cylX + cylWidth, y: topY))
-        sidePath.stroke()
-
-        // Top cap ellipse (filled to close the top)
-        let topCap = NSBezierPath(ovalIn: NSRect(
-            x: cylX, y: topY - ellipseHeight / 2,
-            width: cylWidth, height: ellipseHeight
-        ))
-        topCap.lineWidth = lineWidth
         NSColor.black.setFill()
-        topCap.fill()
-        topCap.stroke()
+        let lw: CGFloat = 1.4
 
-        // Badge with running count
-        if runningCount > 0 {
-            let badgeRadius: CGFloat = 5.5
-            let badgeCenterX: CGFloat = w - badgeRadius
-            let badgeCenterY: CGFloat = badgeRadius - 0.5
+        // Beer mug body
+        let mugL: CGFloat = 3.5
+        let mugB: CGFloat = 2
+        let mugW: CGFloat = 11
+        let mugH: CGFloat = 14
+        let body = NSBezierPath(roundedRect: NSRect(x: mugL, y: mugB, width: mugW, height: mugH),
+                                xRadius: 1.5, yRadius: 1.5)
+        body.lineWidth = lw
+        if active { body.fill() }
+        body.stroke()
 
-            // Badge circle
-            let badgeRect = NSRect(
-                x: badgeCenterX - badgeRadius,
-                y: badgeCenterY - badgeRadius,
-                width: badgeRadius * 2,
-                height: badgeRadius * 2
-            )
-            let badge = NSBezierPath(ovalIn: badgeRect)
-            NSColor.black.setFill()
-            badge.fill()
+        // Handle (C-curve on the right)
+        let handle = NSBezierPath()
+        handle.lineWidth = lw
+        handle.move(to: NSPoint(x: mugL + mugW, y: 13))
+        handle.curve(to: NSPoint(x: mugL + mugW, y: 6),
+                     controlPoint1: NSPoint(x: mugL + mugW + 4.5, y: 13),
+                     controlPoint2: NSPoint(x: mugL + mugW + 4.5, y: 6))
+        handle.stroke()
 
-            // Number inside badge - draw in white (becomes transparent in template mode)
-            let countStr = runningCount > 9 ? "+" : "\(runningCount)"
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.boldSystemFont(ofSize: 7.5),
-                .foregroundColor: NSColor.white,
-            ]
-            let size = (countStr as NSString).size(withAttributes: attrs)
-            let textPoint = NSPoint(
-                x: badgeCenterX - size.width / 2,
-                y: badgeCenterY - size.height / 2
-            )
-            (countStr as NSString).draw(at: textPoint, withAttributes: attrs)
+        // Foam bumps on top (only when full)
+        if active {
+            let foamY = mugB + mugH
+            let foamH: CGFloat = 3.5
+            let bw = mugW / 3.0
+            let foam = NSBezierPath()
+            foam.move(to: NSPoint(x: mugL, y: foamY))
+            for i in 0..<3 {
+                let sx = mugL + bw * CGFloat(i)
+                let ex = sx + bw
+                foam.curve(to: NSPoint(x: ex, y: foamY),
+                           controlPoint1: NSPoint(x: sx, y: foamY + foamH),
+                           controlPoint2: NSPoint(x: ex, y: foamY + foamH))
+            }
+            foam.close()
+            foam.fill()
         }
 
         return true
